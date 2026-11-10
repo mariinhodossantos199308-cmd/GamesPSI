@@ -1,6 +1,6 @@
 title = Baldi's Basics
 desc = Um jogo de terror educacional divertido e assustador.
-psi_url = https://github.com/seu-usuario/seu-repo/releases/download/Tag1/BaldisBasics.psi
+psi_url = https://github.com/mariinhodossantos199308-cmd/GamesPSI/releases/download/Tag1/BirthdayBash.psi
 wallpaper_url = https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1Pgu0ySM-fEZaeEvx8GkQR4hLdI7hDdGXX2YR6iUcmA&s=10
 icon_url = https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8wxOtxAoWOZ9WAKAGoDxQ-PZVNHqMq8r9JVK59ml0tKkrz1AM995beikc&s=10
 pay = false
