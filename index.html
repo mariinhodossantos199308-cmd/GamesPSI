@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Collector - Arcade WASD</title>
+    <!-- CSS / Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #ffffff;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Efeitos Neon e sombras */
+        .neon-text-blue {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .neon-text-pink {
+            text-shadow: 0 0 10px rgba(236, 72, 153, 0.8), 0 0 20px rgba(236, 72, 153, 0.4);
+        }
+
+        .neon-box {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3), inset 0 0 15px rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-action {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+        }
+
+        .btn-action:active {
+            transform: translateY(1px);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(59, 130, 246, 0.3);
+            background-color: #05070d;
+        }
+
+        /* Botões Virtuais para Mobile */
+        .touch-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #fff;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .touch-btn:active {
+            background: rgba(59, 130, 246, 0.4);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 overflow-x-hidden">
+
+    <!-- Container Principal do Jogo -->
+    <div class="relative w-full max-w-4xl flex flex-col items-center">
+
+        <!-- Cabeçalho de Informações / Placar -->
+        <div class="w-full flex justify-between items-center mb-3 px-4 py-3 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-xl neon-box">
+            <div class="flex items-center space-x-6">
+                <div>
+                    <span class="text-xs text-gray-400 block uppercase font-orbitron">Pontos</span>
+                    <span id="scoreText" class="text-2xl font-bold font-orbitron text-yellow-400">0</span>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-400 block uppercase font-orbitron">Multiplicador</span>
+                    <span id="multiplierText" class="text-xl font-bold font-orbitron text-cyan-400">x1</span>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <span class="text-xs text-gray-400 uppercase font-orbitron mr-2 hidden sm:inline">Vidas:</span>
+                <div id="livesContainer" class="flex space-x-1">
+                    <!-- Ícones de Coração são inseridos dinamicamente pelo JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Área do Canvas com Overlays -->
+        <div class="relative w-full flex justify-center items-center">
+            
+            <!-- Canvas do Jogo -->
+            <canvas id="gameCanvas" class="w-full h-auto border border-gray-800"></canvas>
+
+            <!-- Overlay: Tela Inicial -->
+            <div id="startOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md rounded-xl flex flex-col items-center justify-center p-6 text-center z-10 transition-opacity duration-300">
+                <h1 class="text-4xl sm:text-6xl font-black font-orbitron neon-text-blue mb-2 tracking-wider">NEON COLLECTOR</h1>
+                <p class="text-gray-300 text-sm sm:text-base max-w-md mb-6">
+                    Use <span class="text-cyan-400 font-bold border border-cyan-400/40 px-2 py-0.5 rounded bg-cyan-950/40">WASD</span> para mover o seu núcleo neon. Colete orbes de energia luminosa e fuja dos orbes vermelhos hostis!
+                </p>
+                
+                <div class="bg-gray-900/60 p-4 rounded-lg border border-gray-800 mb-6 text-left max-w-sm w-full text-xs sm:text-sm text-gray-300 space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-yellow-400 inline-block shadow-[0_0_8px_#facc15]"></span>
+                        <span><b>Orbe Amarelo:</b> +100 Pontos</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-cyan-400 inline-block shadow-[0_0_8px_#22d3ee]"></span>
+                        <span><b>Escudo Azul:</b> Invulnerabilidade Temporária</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500 inline-block shadow-[0_0_8px_#ef4444]"></span>
+                        <span><b>Inimigo Vermelho:</b> Causa dano</span>
+                    </div>
+                </div>
+
+                <button id="btnStart" class="btn-action font-orbitron text-white text-lg font-bold px-8 py-3 rounded-xl cursor-pointer tracking-wider shadow-lg">
+                    INICIAR JOGO
+                </button>
+            </div>
+
+            <!-- Overlay: Game Over -->
+            <div id="gameOverOverlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md rounded-xl flex flex-col items-center justify-center p-6 text-center z-10 hidden">
+                <h2 class="text-4xl sm:text-5xl font-black font-orbitron neon-text-pink mb-2">FIM DE JOGO</h2>
+                <p class="text-gray-400 mb-6">Sua energia esgotou-se!</p>
+                
+                <div class="bg-gray-900/80 p-6 rounded-xl border border-gray-800 mb-6 min-w-[240px]">
+                    <div class="text-gray-400 text-xs font-orbitron uppercase mb-1">Pontuação Final</div>
+                    <div id="finalScore" class="text-4xl font-extrabold font-orbitron text-yellow-400 mb-3">0</div>
+                    
+                    <div class="text-gray-400 text-xs font-orbitron uppercase mb-1">Recorde</div>
+                    <div id="highScoreText" class="text-xl font-bold font-orbitron text-purple-400">0</div>
+                </div>
+
+                <button id="btnRestart" class="btn-action font-orbitron text-white text-lg font-bold px-8 py-3 rounded-xl cursor-pointer tracking-wider shadow-lg">
+                    JOGAR NOVAMENTE
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Controles Virtuais no Mobile (exibidos em telas menores) -->
+        <div class="w-full max-w-xs mt-4 grid grid-cols-3 gap-2 sm:hidden">
+            <div></div>
+            <button id="btnUp" class="touch-btn h-14 text-2xl">W</button>
+            <div></div>
+            <button id="btnLeft" class="touch-btn h-14 text-2xl">A</button>
+            <button id="btnDown" class="touch-btn h-14 text-2xl">S</button>
+            <button id="btnRight" class="touch-btn h-14 text-2xl">D</button>
+        </div>
+
+        <!-- Dicas de Controle para Desktop -->
+        <div class="mt-4 text-gray-500 text-xs font-orbitron hidden sm:flex items-center space-x-4">
+            <span>Mover: <strong class="text-gray-300">W, A, S, D</strong> ou <strong class="text-gray-300">Setas</strong></span>
+            <span>•</span>
+            <span>Pausar: <strong class="text-gray-300">P</strong> ou <strong class="text-gray-300">ESC</strong></span>
+        </div>
+
+    </div>
+
+    <!-- Código Lógico do Jogo em JS -->
+    <script>
+        // Configuração do Canvas e Contexto
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Resolução base do canvas interno (mantém aspect ratio e boa qualidade)
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 500;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        // Elementos DOM de Interface
+        const startOverlay = document.getElementById('startOverlay');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const scoreText = document.getElementById('scoreText');
+        const multiplierText = document.getElementById('multiplierText');
+        const finalScoreText = document.getElementById('finalScore');
+        const highScoreText = document.getElementById('highScoreText');
+        const livesContainer = document.getElementById('livesContainer');
+        const btnStart = document.getElementById('btnStart');
+        const btnRestart = document.getElementById('btnRestart');
+
+        // Estado Global do Jogo
+        let gameState = 'START'; // 'START', 'PLAYING', 'GAMEOVER', 'PAUSED'
+        let score = 0;
+        let highScore = localStorage.getItem('neon_collector_highscore') || 0;
+        let lives = 3;
+        let multiplier = 1;
+        let comboTimer = 0;
+        let animationFrameId = null;
+
+        // Controle de Teclas Solicitado (WASD + Setas)
+        const keys = {
+            w: false, a: false, s: false, d: false,
+            ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false
+        };
+
+        // Ouvintes de teclado
+        window.addEventListener('keydown', (e) => {
+            if (e.key in keys) {
+                keys[e.key] = true;
+                // Evita scroll da página ao usar as setas
+                if (e.key.startsWith('Arrow')) e.preventDefault();
+            }
+            if ((e.key === 'p' || e.key === 'P' || e.key === 'Escape') && gameState === 'PLAYING') {
+                togglePause();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key in keys) {
+                keys[e.key] = false;
+            }
+        });
+
+        // Suporte para botões virtuais no mobile
+        function setupTouchControl(buttonId, keyName) {
+            const btn = document.getElementById(buttonId);
+            const setKey = (val) => { keys[keyName] = val; };
+            
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); setKey(true); });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); setKey(false); });
+            btn.addEventListener('mousedown', () => setKey(true));
+            btn.addEventListener('mouseup', () => setKey(false));
+            btn.addEventListener('mouseleave', () => setKey(false));
+        }
+
+        setupTouchControl('btnUp', 'w');
+        setupTouchControl('btnLeft', 'a');
+        setupTouchControl('btnDown', 's');
+        setupTouchControl('btnRight', 'd');
+
+        // Entidades do Jogo
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 16;
+                this.speed = 5.5;
+                this.vx = 0;
+                this.vy = 0;
+                this.friction = 0.85;
+                this.isShielded = false;
+                this.shieldTimer = 0;
+                this.color = '#3b82f6';
+                this.trail = [];
+            }
+
+            update() {
+                // Ler direções WASD / Setas
+                let moveX = 0;
+                let moveY = 0;
+
+                if (keys.w || keys.ArrowUp) moveY -= 1;
+                if (keys.s || keys.ArrowDown) moveY += 1;
+                if (keys.a || keys.ArrowLeft) moveX -= 1;
+                if (keys.d || keys.ArrowRight) moveX += 1;
+
+                // Normalização diagonal
+                if (moveX !== 0 && moveY !== 0) {
+                    moveX *= 0.7071;
+                    moveY *= 0.7071;
+                }
+
+                // Aplicação da aceleração com fricção (movimento suave)
+                this.vx += moveX * this.speed * 0.3;
+                this.vy += moveY * this.speed * 0.3;
+
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Limites da tela
+                if (this.x - this.radius < 0) { this.x = this.radius; this.vx = 0; }
+                if (this.x + this.radius > CANVAS_WIDTH) { this.x = CANVAS_WIDTH - this.radius; this.vx = 0; }
+                if (this.y - this.radius < 0) { this.y = this.radius; this.vy = 0; }
+                if (this.y + this.radius > CANVAS_HEIGHT) { this.y = CANVAS_HEIGHT - this.radius; this.vy = 0; }
+
+                // Efeito de Rastro
+                this.trail.push({ x: this.x, y: this.y, alpha: 0.6 });
+                if (this.trail.length > 10) this.trail.shift();
+                this.trail.forEach(t => t.alpha -= 0.05);
+
+                // Temporizador de Escudo
+                if (this.isShielded) {
+                    this.shieldTimer--;
+                    if (this.shieldTimer <= 0) {
+                        this.isShielded = false;
+                    }
+                }
+            }
+
+            draw() {
+                // Desenhar Rastro
+                for (let i = 0; i < this.trail.length; i++) {
+                    const t = this.trail[i];
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, this.radius * (i / this.trail.length), 0, Math.PI * 2);
+                    ctx.fillStyle = this.isShielded ? `rgba(34, 211, 238, ${Math.max(0, t.alpha)})` : `rgba(59, 130, 246, ${Math.max(0, t.alpha)})`;
+                    ctx.fill();
+                }
+
+                // Escudo
+                if (this.isShielded) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 6, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(34, 211, 238, ${0.5 + Math.sin(Date.now() / 100) * 0.3})`;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+
+                // Corpo do Jogador
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.isShielded ? '#22d3ee' : '#60a5fa';
+                ctx.shadowColor = this.isShielded ? '#22d3ee' : '#3b82f6';
+                ctx.shadowBlur = 15;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Núcleo
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+            }
+        }
+
+        class Item {
+            constructor(type) {
+                this.x = Math.random() * (CANVAS_WIDTH - 60) + 30;
+                this.y = Math.random() * (CANVAS_HEIGHT - 60) + 30;
+                this.radius = type === 'shield' ? 12 : 10;
+                this.type = type; // 'orb', 'shield'
+                this.pulse = 0;
+            }
+
+            draw() {
+                this.pulse += 0.05;
+                const currentRadius = this.radius + Math.sin(this.pulse) * 2;
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, Math.max(1, currentRadius), 0, Math.PI * 2);
+
+                if (this.type === 'orb') {
+                    ctx.fillStyle = '#facc15';
+                    ctx.shadowColor = '#facc15';
+                } else if (this.type === 'shield') {
+                    ctx.fillStyle = '#22d3ee';
+                    ctx.shadowColor = '#22d3ee';
+                }
+
+                ctx.shadowBlur = 12;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Enemy {
+            constructor(x, y, speed) {
+                this.x = x;
+                this.y = y;
+                this.radius = 12;
+                this.speed = speed;
+                this.vx = (Math.random() - 0.5) * speed;
+                this.vy = (Math.random() - 0.5) * speed;
+            }
+
+            update(player) {
+                // Perseguição leve ao jogador
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist > 0) {
+                    this.vx += (dx / dist) * 0.08;
+                    this.vy += (dy / dist) * 0.08;
+                }
+
+                // Limitar velocidade máxima
+                const currentSpeed = Math.hypot(this.vx, this.vy);
+                if (currentSpeed > this.speed) {
+                    this.vx = (this.vx / currentSpeed) * this.speed;
+                    this.vy = (this.vy / currentSpeed) * this.speed;
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Quicar nas paredes
+                if (this.x - this.radius < 0 || this.x + this.radius > CANVAS_WIDTH) this.vx *= -1;
+                if (this.y - this.radius < 0 || this.y + this.radius > CANVAS_HEIGHT) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444';
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.radius = Math.random() * 3 + 1;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.life = 1;
+                this.decay = Math.random() * 0.03 + 0.02;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, Math.max(0, this.radius), 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Variáveis do Loop de Jogo
+        let player;
+        let items = [];
+        let enemies = [];
+        let particles = [];
+        let enemySpawnTimer = 0;
+
+        // Inicialização do Jogo
+        function initGame() {
+            score = 0;
+            lives = 3;
+            multiplier = 1;
+            comboTimer = 0;
+            items = [];
+            enemies = [];
+            particles = [];
+            enemySpawnTimer = 0;
+
+            player = new Player(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+
+            // Gerar itens iniciais
+            for (let i = 0; i < 4; i++) {
+                items.push(new Item('orb'));
+            }
+            items.push(new Item('shield'));
+
+            // Criar primeiro inimigo em posição distante do jogador
+            spawnEnemy();
+
+            updateUI();
+        }
+
+        function spawnEnemy() {
+            let x, y;
+            do {
+                x = Math.random() * CANVAS_WIDTH;
+                y = Math.random() * CANVAS_HEIGHT;
+            } while (Math.hypot(player.x - x, player.y - y) < 200);
+
+            const speed = 2 + Math.random() * 1.5 + Math.min(3, score / 1500);
+            enemies.push(new Enemy(x, y, speed));
+        }
+
+        function createExplosion(x, y, color, count = 12) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function updateUI() {
+            scoreText.innerText = score;
+            multiplierText.innerText = `x${multiplier}`;
+
+            // Atualiza corações de vida
+            livesContainer.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const heart = document.createElement('span');
+                heart.className = `inline-block w-4 h-4 rounded-full ${i < lives ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : 'bg-gray-700'}`;
+                livesContainer.appendChild(heart);
+            }
+        }
+
+        // Loop Principal
+        function gameLoop() {
+            if (gameState !== 'PLAYING') return;
+
+            // Limpar Tela
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Atualizar e Desenhar Jogador
+            player.update();
+            player.draw();
+
+            // Atualizar e Desenhar Partículas
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // Atualizar Combo/Multiplicador
+            if (comboTimer > 0) {
+                comboTimer--;
+                if (comboTimer <= 0) multiplier = 1;
+            }
+
+            // Gerar Inimigos Periodicamente
+            enemySpawnTimer++;
+            if (enemySpawnTimer > 360) { // a cada 6 segundos aprox
+                spawnEnemy();
+                enemySpawnTimer = 0;
+            }
+
+            // Gerenciar Itens (Coleta)
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                item.draw();
+
+                const dist = Math.hypot(player.x - item.x, player.y - item.y);
+                if (dist < player.radius + item.radius) {
+                    if (item.type === 'orb') {
+                        score += 100 * multiplier;
+                        multiplier = Math.min(multiplier + 1, 5);
+                        comboTimer = 180; // 3 segundos para manter combo
+                        createExplosion(item.x, item.y, '#facc15', 10);
+                        items.splice(i, 1);
+                        items.push(new Item('orb')); // Repor orbe
+                    } else if (item.type === 'shield') {
+                        player.isShielded = true;
+                        player.shieldTimer = 300; // 5 segundos
+                        createExplosion(item.x, item.y, '#22d3ee', 15);
+                        items.splice(i, 1);
+                        // Chance de repor escudo
+                        setTimeout(() => {
+                            if (gameState === 'PLAYING') items.push(new Item('shield'));
+                        }, 8000);
+                    }
+                    updateUI();
+                }
+            }
+
+            // Gerenciar Inimigos (Colisão)
+            for (let i = 0; i < enemies.length; i++) {
+                const enemy = enemies[i];
+                enemy.update(player);
+                enemy.draw();
+
+                const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+                if (dist < player.radius + enemy.radius) {
+                    if (player.isShielded) {
+                        // Inimigo destruído pelo escudo
+                        createExplosion(enemy.x, enemy.y, '#ef4444', 15);
+                        enemies.splice(i, 1);
+                        score += 50;
+                        updateUI();
+                        setTimeout(spawnEnemy, 2000);
+                    } else {
+                        // Jogador toma dano
+                        lives--;
+                        createExplosion(player.x, player.y, '#ef4444', 20);
+                        updateUI();
+
+                        // Empurrão de impacto
+                        const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                        player.vx += Math.cos(angle) * 12;
+                        player.vy += Math.sin(angle) * 12;
+
+                        // Temporizador rápido de escudinho pós-dano
+                        player.isShielded = true;
+                        player.shieldTimer = 60; // 1 segundo invulnerável
+
+                        if (lives <= 0) {
+                            endGame();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Fluxo de Estados
+        function startGame() {
+            gameState = 'PLAYING';
+            startOverlay.classList.add('hidden');
+            gameOverOverlay.classList.add('hidden');
+            initGame();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            gameLoop();
+        }
+
+        function endGame() {
+            gameState = 'GAMEOVER';
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('neon_collector_highscore', highScore);
+            }
+            finalScoreText.innerText = score;
+            highScoreText.innerText = highScore;
+            gameOverOverlay.classList.remove('hidden');
+        }
+
+        function togglePause() {
+            if (gameState === 'PLAYING') {
+                gameState = 'PAUSED';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                ctx.font = '30px Orbitron';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSADO', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+            } else if (gameState === 'PAUSED') {
+                gameState = 'PLAYING';
+                gameLoop();
+            }
+        }
+
+        // Eventos dos Botões
+        btnStart.addEventListener('click', startGame);
+        btnRestart.addEventListener('click', startGame);
+
+        // Renderizar background inicial no canvas
+        ctx.fillStyle = '#05070d';
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    </script>
+</body>
+</html>
