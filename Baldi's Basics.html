@@ -63,6 +63,41 @@ https://discord.gg/gn-math
         },
       );
     </script>
+
+    <!-- PONTE DE CONTROLE DO PROTO OS -->
+    <script>
+      window.addEventListener('message', function(event) {
+        if (!event.data || !event.data.key) return;
+        const keyName = event.data.key;
+        const eventType = event.data.type || 'keydown';
+
+        // Simula o evento de teclado para o Unity WebGL capturar
+        const keyboardEvent = new KeyboardEvent(eventType, {
+          key: keyName,
+          code: keyName,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        });
+
+        document.dispatchEvent(keyboardEvent);
+        window.dispatchEvent(keyboardEvent);
+
+        const canvas = document.querySelector('canvas');
+        if (canvas) {
+          canvas.dispatchEvent(keyboardEvent);
+          canvas.focus();
+        }
+      });
+
+      // Garante foco automático no canvas do jogo ao carregar
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const canvas = document.querySelector('canvas');
+          if (canvas) canvas.focus();
+        }, 2000);
+      });
+    </script>
   </head>
   <body style="margin: 0">
     <div class="webgl-content">
